@@ -12,7 +12,12 @@
 #include "../../include/mytest.h"
 #include "../../include/y.tab.h"
 #include "../../include/IRPrinter_genCcode.h"
+#ifdef _WIN32
 #include <io.h>
+#else
+#include <stdio.h>
+#include <dirent.h>
+#endif
 
 extern std::map<std::string, std::pair<int, int>> global_map;
 extern std::map<std::string, std::vector<size_t>> global_shape_map;
@@ -82,6 +87,7 @@ int main()
 {
     std::string InDir = "./cases/*.json";
     std::string OutDir = "./kernels/";
+#ifdef _WIN32
     //用于查找的句柄
     long handle;
     struct _finddata_t fileinfo;
@@ -97,8 +103,24 @@ int main()
         handler("./cases/" + filename, OutPath);
 
     } while (!_findnext(handle, &fileinfo));
-
     _findclose(handle);
+#else
+    struct dirent *dirp;
+    DIR *dir = opendir("./cases/");
+    while ((dirp = readdir(dir)) != nullptr)
+    {
+        if (dirp->d_type == DT_REG)
+        {
+            std::string file_name(dirp->d_name);
+            if (file_name.substr(file_name.length() - 5) == std::string(".json"))
+            {
+                std::string OutPath = OutDir + "kernel_" + file_name.substr(0, file_name.length() - 5) + ".cc";
+                handler("./cases/" + file_name, OutPath);
+            }
+        }
+    }
+    closedir(dir);
+#endif
 
     return 0;
 }
