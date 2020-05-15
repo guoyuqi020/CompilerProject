@@ -71,7 +71,7 @@ void IRTermFinder::getIfStmtGroup()
     {
         IRIfFinder iffinder;
         term_group_ptr->term_ptr.real_ptr()->visit_node(&iffinder);
-        std::shared_ptr<IfThenElse> ptr;
+        std::shared_ptr<IfThenElse> ptr = nullptr;
         for (int i = iffinder._if_stmt_group.size() - 1; i >= 0; i--)
         {
             if (i == int(iffinder._if_stmt_group.size() - 1))
@@ -112,7 +112,12 @@ void IRTermFinder::getForStmtGroup()
             index_vec.push_back(Index::make(Type::int_scalar(32), varname, dom, IndexType::Block));
         }
         term_group_ptr->for_stmt_group = std::make_shared<LoopNest>(index_vec, std::vector<Stmt>());
-        term_group_ptr->for_stmt_group->body_list.push_back(Stmt(term_group_ptr->if_stmt_group));
+        if (term_group_ptr->if_stmt_group != nullptr)
+            term_group_ptr->for_stmt_group->body_list.push_back(Stmt(term_group_ptr->if_stmt_group));
+        else
+        {
+            term_group_ptr->for_stmt_group->body_list.push_back(Stmt(term_group_ptr->move_stmt));
+        }
     }
 }
 

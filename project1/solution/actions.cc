@@ -284,6 +284,7 @@ DEFAULT_TYPE MyPBuilder(DEFAULT_TYPE P)
         }
         std::shared_ptr<Move> move_ptr = std::make_shared<Move>(Expr(std::const_pointer_cast<const Var>(declare_ptr)), Expr(std::const_pointer_cast<const Var>(declare_ptr)), MoveType::MemToMem);
         move_ptr->move_op = MoveOp::Declare;
+
         converted_kernel->stmt_list.push_back(Stmt(move_ptr));
         converted_kernel->stmt_list.push_back(Stmt(finder.outer_loop1));
         converted_kernel->stmt_list.push_back(Stmt(finder.outer_loop2));
