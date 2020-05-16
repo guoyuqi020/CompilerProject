@@ -423,6 +423,12 @@ namespace Boost
                 return *this;
             }
 
+            Expr &operator=(const Expr &other)
+            {
+                this->set_ptr(other.real_ptr());
+                return *this;
+            }
+
             IRNodeType node_type() const
             {
                 return this->get()->node_type();
