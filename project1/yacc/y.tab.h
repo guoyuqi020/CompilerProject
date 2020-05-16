@@ -32,24 +32,20 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
+
 /* Tokens.  */
 #ifndef YYTOKENTYPE
-#define YYTOKENTYPE
-/* Put the tokens into the symbol table, so that GDB and other debuggers
+# define YYTOKENTYPE
+   /* Put the tokens into the symbol table, so that GDB and other debuggers
       know about them.  */
-#include "IR.h"
-
-Boost::Internal::Ref<const Boost::Internal::IRNode> yyparse_string(char *);
-
-enum yytokentype
-{
-   Id = 258,
-   INTEGER = 259,
-   FLOAT = 260,
-   DELIM = 261,
-   WHITESPACE = 262,
-   EXACTLYDIVIDE = 263
-};
+   enum yytokentype {
+     Id = 258,
+     INTEGER = 259,
+     FLOAT = 260,
+     DELIM = 261,
+     WHITESPACE = 262,
+     EXACTLYDIVIDE = 263
+   };
 #endif
 /* Tokens.  */
 #define Id 258
@@ -59,11 +55,16 @@ enum yytokentype
 #define WHITESPACE 262
 #define EXACTLYDIVIDE 263
 
-#if !defined YYSTYPE && !defined YYSTYPE_IS_DECLARED
+
+
+
+#if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef int YYSTYPE;
-#define YYSTYPE_IS_TRIVIAL 1
-#define yystype YYSTYPE /* obsolescent; will be withdrawn */
-#define YYSTYPE_IS_DECLARED 1
+# define YYSTYPE_IS_TRIVIAL 1
+# define yystype YYSTYPE /* obsolescent; will be withdrawn */
+# define YYSTYPE_IS_DECLARED 1
 #endif
 
 extern YYSTYPE yylval;
+
+
