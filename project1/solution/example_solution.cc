@@ -9,7 +9,7 @@
 #include <string>
 #include "../../include/IR.h"
 #include "../../3rdparty/jsoncpp/include/json/json.h"
-#include "../../include/mytest.h"
+#include "../../include/tokens.h"
 #include "../../include/y.tab.h"
 #include "../../include/IRPrinter_genCcode.h"
 #ifdef _WIN32

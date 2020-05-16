@@ -4,7 +4,7 @@
     #include <stdio.h>
     int yylval_inttmp;
     double yylval_doubletmp;
-    #include "../../include/mytest.h"
+    #include "../../include/tokens.h"
     #include "../../include/y.tab.h"
 %}
 myinteger ([1-9][0-9]*)
