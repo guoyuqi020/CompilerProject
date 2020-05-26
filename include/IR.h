@@ -75,7 +75,7 @@ namespace Boost
             template <typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type * = nullptr>
             Ref(std::shared_ptr<U> _ptr) : ptr(_ptr) {}
 
-            bool defined() { return ptr != nullptr; }
+            bool defined() const { return ptr != nullptr; }
 
             T *get() const { return ptr.get(); }
 
@@ -416,6 +416,12 @@ namespace Boost
             explicit Expr(float value) : Ref<const ExprNode>(FloatImm::make(Type::float_scalar(32), static_cast<double>(value))) {}
 
             Expr(double value) : Ref<const ExprNode>(FloatImm::make(Type::float_scalar(64), value)) {}
+
+            Expr &operator=(const Expr &other)
+            {
+                this->set_ptr(other.real_ptr());
+                return *this;
+            }
 
             IRNodeType node_type() const
             {
