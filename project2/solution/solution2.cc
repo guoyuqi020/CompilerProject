@@ -12,6 +12,7 @@
 #include "../../include/tokens.h"
 #include "../../include/y.tab.h"
 #include "../../include/IRPrinter_genCcode.h"
+#include "../../include/IRMutator_grad.h"
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -21,11 +22,18 @@
 
 extern std::map<std::string, std::pair<int, int>> global_map;
 extern std::map<std::string, std::vector<size_t>> global_shape_map;
+extern std::vector<std::string> global_dest_name;
+extern size_t global_dest_index;
+extern std::set<std::string> global_used;
 
 void handler(std::string inpath, std::string outpath)
 {
     global_map.clear();
     global_shape_map.clear();
+    global_dest_name.clear();
+    global_dest_index = 0;
+    global_used.clear();
+
     Boost::Internal::Ref<const Boost::Internal::IRNode> myroot;
 
     Json::CharReaderBuilder reader_builder;
@@ -64,6 +72,8 @@ void handler(std::string inpath, std::string outpath)
     for (auto item : root["outs"])
     {
         std::string varname = item.asString();
+        global_shape_map["d" + varname] = global_shape_map[varname];
+        varname = "d" + varname;
         if (array_recorded.find(varname) != array_recorded.end())
             continue;
         array_recorded.insert(varname);
@@ -74,9 +84,27 @@ void handler(std::string inpath, std::string outpath)
         }
         myroot_kernel->outputs.push_back(std::const_pointer_cast<const Boost::Internal::Var>(ptr));
     }
+    for (auto item : root["grad_to"])
+    {
+        std::string varname = item.asString();
+        global_dest_name.push_back(varname);
+        global_shape_map["d" + varname] = global_shape_map[varname];
+        varname = "d" + varname;
+        if (array_recorded.find(varname) != array_recorded.end())
+            continue;
+        array_recorded.insert(varname);
+        std::shared_ptr<Boost::Internal::Var> ptr = std::make_shared<Boost::Internal::Var>(Boost::Internal::Type::float_scalar(32), "(&" + varname + ")", std::vector<Boost::Internal::Expr>(), global_shape_map[varname]);
+        for (auto dim : ptr->shape)
+        {
+            ptr->args.push_back(int(dim));
+        }
+        myroot_kernel->grads.push_back(std::const_pointer_cast<const Boost::Internal::Var>(ptr));
+    }
     myroot_kernel->printer_data_type = root["data_type"].asString();
     myroot_kernel->name = root["name"].asString();
     Boost::Internal::IRPrinter_genCcode printer;
+    Boost::Internal::IRMutator_grad mutator;
+    //Boost::Internal::Group res = mutator.mutate(Boost::Internal::Group(myroot_kernel));
     ofile << printer.print(Boost::Internal::Group(myroot_kernel));
 
     ofile.close();

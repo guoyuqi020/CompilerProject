@@ -1002,6 +1002,7 @@ namespace Boost
             std::string name;
             std::vector<Expr> inputs;
             std::vector<Expr> outputs;
+            std::vector<Expr> grads;
             std::vector<Stmt> stmt_list;
             KernelType kernel_type;
             std::string printer_data_type;

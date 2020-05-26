@@ -9,6 +9,7 @@ void IRPrinter_genCcode::visit(Ref<const Kernel> op)
     oss << "void " << op->name << "(";
     print_arg = true;
     bool has_input = false;
+    bool has_output = false;
     data_type = op->printer_data_type;
     for (size_t i = 0; i < op->inputs.size(); ++i)
     {
@@ -26,6 +27,14 @@ void IRPrinter_genCcode::visit(Ref<const Kernel> op)
             oss << ", ";
         oss << op->printer_data_type << " ";
         op->outputs[i].visit_expr(this);
+        has_output = true;
+    }
+    for (size_t i = 0; i < op->grads.size(); ++i)
+    {
+        if (has_input || has_output || i != 0)
+            oss << ", ";
+        oss << op->printer_data_type << " ";
+        op->grads[i].visit_expr(this);
     }
     print_arg = false;
     oss << ") {\n";
@@ -195,7 +204,7 @@ void IRPrinter_genCcode::visit(Ref<const Move> op)
 std::string IRPrinter_genCcode::print(const Group &group)
 {
     oss.clear();
-    oss << "#include \"../run.h\"\n\n";
+    oss << "#include \"../run2.h\"\n\n";
     group.visit_group(this);
     return oss.str();
 }
