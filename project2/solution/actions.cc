@@ -282,7 +282,9 @@ DEFAULT_TYPE MyPBuilder(DEFAULT_TYPE P)
         {
             declare_ptr->args.push_back(int(size));
         }
-        std::shared_ptr<Move> move_ptr = std::make_shared<Move>(Expr(std::const_pointer_cast<const Var>(declare_ptr)), Expr(std::const_pointer_cast<const Var>(declare_ptr)), MoveType::MemToMem);
+        temp_ptr->src_dim = temp_ptr->shape.size();
+        declare_ptr->src_dim = declare_ptr->shape.size();
+        std::shared_ptr<Move> move_ptr = std::make_shared<Move>(Expr(std::const_pointer_cast<const Var>(declare_ptr)), Expr(std::const_pointer_cast<const Var>(temp_ptr)), MoveType::MemToMem);
         move_ptr->move_op = MoveOp::Declare;
 
         converted_kernel->stmt_list.push_back(Stmt(move_ptr));

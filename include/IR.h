@@ -821,6 +821,7 @@ namespace Boost
             std::vector<Expr> args;
             // TODO: this may need to be removed to other class
             std::vector<size_t> shape;
+            size_t src_dim = 0;
 
             Var(Type _type, const std::string &_name, const std::vector<Expr> &_args,
                 const std::vector<size_t> &_shape) : ExprNode(_type, IRNodeType::Var),

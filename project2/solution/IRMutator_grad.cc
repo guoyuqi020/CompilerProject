@@ -185,20 +185,60 @@ Stmt IRMutator_grad::visit(Ref<const Move> op)
 
 Group IRMutator_grad::visit(Ref<const Kernel> op)
 {
+    global_used.clear();
+    std::vector<Stmt> new_stmt_list;
+    int temp_count = 1;
+    int index_count = 1;
+    for (global_dest_index = 0; global_dest_index < global_dest_name.size(); global_dest_index++)
+    {
+        for (auto stmt : op->stmt_list)
+        {
+            if (stmt.node_type() == IRNodeType::Move)
+            {
+                //rename and reshape temp
+                index_count = 1;
+                std::shared_ptr<Move> ptr = std::const_pointer_cast<Move>(stmt.as<Move>());
+                std::shared_ptr<Var> dst_var_ptr = std::const_pointer_cast<Var>(ptr->dst.as<Var>());
+                std::shared_ptr<Var> src_var_ptr = std::const_pointer_cast<Var>(ptr->src.as<Var>());
+                dst_var_ptr->name = "temp" + std::to_string(temp_count);
+                src_var_ptr->name = "temp" + std::to_string(temp_count);
+                temp_count += 1;
+                while (dst_var_ptr->shape.size() > dst_var_ptr->src_dim)
+                {
+                    dst_var_ptr->shape.pop_back();
+                    dst_var_ptr->args.pop_back();
+                    src_var_ptr->shape.pop_back();
+                    src_var_ptr->args.pop_back();
+                }
+                std::vector<size_t> grad_shape = global_shape_map[global_dest_name[global_dest_index]];
+                for (auto s : grad_shape)
+                {
+                    dst_var_ptr->shape.push_back(s);
+                    src_var_ptr->shape.push_back(s);
+                    dst_var_ptr->args.push_back(int(s));
+                    src_var_ptr->args.push_back(StringImm::make(Type::int_scalar(32), "index" + std::to_string(index_count)));
+                    index_count += 1;
+                }
+            }
+            new_stmt_list.push_back(stmt);
+        }
+    }
     std::vector<Expr> new_inputs;
     for (auto expr : op->inputs)
     {
-        new_inputs.push_back(mutate(expr));
+        new_inputs.push_back(expr);
     }
     std::vector<Expr> new_outputs;
     for (auto expr : op->outputs)
     {
-        new_outputs.push_back(mutate(expr));
+        new_outputs.push_back(expr);
     }
-    std::vector<Stmt> new_stmt_list;
-    for (auto stmt : op->stmt_list)
+    std::vector<Expr> new_grads;
+    for (auto expr : op->grads)
     {
-        new_stmt_list.push_back(mutate(stmt));
+        new_grads.push_back(expr);
     }
-    return Kernel::make(op->name, new_inputs, new_outputs, new_stmt_list, op->kernel_type);
+    std::shared_ptr<Kernel> output_ptr = std::const_pointer_cast<Kernel>(std::make_shared<const Kernel>(op->name, new_inputs, new_outputs, new_stmt_list, op->kernel_type));
+    output_ptr->grads = new_grads;
+    return std::const_pointer_cast<const Kernel>(output_ptr);
 }
