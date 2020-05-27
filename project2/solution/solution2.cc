@@ -104,7 +104,7 @@ void handler(std::string inpath, std::string outpath)
     myroot_kernel->name = root["name"].asString();
     Boost::Internal::IRPrinter_genCcode printer;
     Boost::Internal::IRMutator_grad mutator;
-    //Boost::Internal::Group res = mutator.mutate(Boost::Internal::Group(myroot_kernel));
+    Boost::Internal::Group res = mutator.mutate(Boost::Internal::Group(myroot_kernel));
     ofile << printer.print(Boost::Internal::Group(myroot_kernel));
 
     ofile.close();
