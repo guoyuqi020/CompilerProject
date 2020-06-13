@@ -98,7 +98,9 @@ Expr IRMutator_grad::visit(Ref<const StringImm> op)
 Expr IRMutator_grad::visit(Ref<const Unary> op)
 {
     Expr a_grad = mutate(op->a);
-    return Unary::make(op->type(), op->op_type, a_grad);
+    std::shared_ptr<Unary> ret_ptr = std::make_shared<Unary>(op->type(), op->op_type, a_grad);
+    if (!a_grad->is_zero) ret_ptr->var_used.insert(a_grad->var_used.begin(),a_grad->var_used.end());
+    return std::const_pointer_cast<const Unary>(ret_ptr);
 }
 
 Expr IRMutator_grad::visit(Ref<const Binary> op)
@@ -115,7 +117,10 @@ Expr IRMutator_grad::visit(Ref<const Binary> op)
         }
         else
         {
-            return Binary::make(op->type(), op->op_type, a_grad, b_grad);
+            std::shared_ptr<Binary> ret_ptr = std::make_shared<Binary>(op->type(), op->op_type, a_grad, b_grad);
+            if (!a_grad->is_zero) ret_ptr->var_used.insert(a_grad->var_used.begin(),a_grad->var_used.end());
+            if (!b_grad->is_zero) ret_ptr->var_used.insert(b_grad->var_used.begin(),b_grad->var_used.end());
+            return std::const_pointer_cast<const Binary>(ret_ptr);
         }
     }
     else if (op->op_type == BinaryOpType::Mul)
@@ -128,18 +133,29 @@ Expr IRMutator_grad::visit(Ref<const Binary> op)
         }
         else if (a_grad->is_zero)
         {
-            return Binary::make(op->type(), BinaryOpType::Mul, op->a, b_grad);
+            std::shared_ptr<Binary> ret_ptr = std::make_shared<Binary>(op->type(), BinaryOpType::Mul, op->a, b_grad);
+            ret_ptr->var_used.insert(op->a->var_used.begin(),op->a->var_used.end());
+            ret_ptr->var_used.insert(b_grad->var_used.begin(),b_grad->var_used.end());
+            return std::const_pointer_cast<const Binary>(ret_ptr);
         }
         else if (b_grad->is_zero)
         {
-            return Binary::make(op->type(), BinaryOpType::Mul, a_grad, op->b);
+            std::shared_ptr<Binary> ret_ptr = std::make_shared<Binary>(op->type(), BinaryOpType::Mul, a_grad, op->b);
+            ret_ptr->var_used.insert(a_grad->var_used.begin(),a_grad->var_used.end());
+            ret_ptr->var_used.insert(op->b->var_used.begin(),op->b->var_used.end());
+            return std::const_pointer_cast<const Binary>(ret_ptr);
         }
         else
         {
             std::shared_ptr<const Binary> term1_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->a, b_grad);
             std::shared_ptr<const Binary> term2_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, a_grad, op->b);
             std::shared_ptr<const Binary> sum_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Add, term1_ptr, term2_ptr);
-            return Unary::make(op->type(), UnaryOpType::Bracket, sum_ptr);
+            std::shared_ptr<Unary> ret_ptr = std::make_shared<Unary>(op->type(), UnaryOpType::Bracket, sum_ptr);
+            ret_ptr->var_used.insert(op->a->var_used.begin(),op->a->var_used.end());
+            ret_ptr->var_used.insert(b_grad->var_used.begin(),b_grad->var_used.end());
+            ret_ptr->var_used.insert(a_grad->var_used.begin(),a_grad->var_used.end());
+            ret_ptr->var_used.insert(op->b->var_used.begin(),op->b->var_used.end());
+            return std::const_pointer_cast<const Unary>(ret_ptr);
         }
     }
     else if (op->op_type == BinaryOpType::Div || op->op_type == BinaryOpType::ExactlyDiv)
@@ -155,11 +171,18 @@ Expr IRMutator_grad::visit(Ref<const Binary> op)
             std::shared_ptr<const Binary> dividend_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->a, b_grad);
             std::shared_ptr<const Binary> divisor_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->b, op->b);
             std::shared_ptr<const Binary> quotient_ptr = std::make_shared<const Binary>(op->type(), op->op_type, dividend_ptr, divisor_ptr);
-            return Unary::make(op->type(), UnaryOpType::Neg, quotient_ptr);
+            std::shared_ptr<Unary> ret_ptr = std::make_shared<Unary>(op->type(), UnaryOpType::Neg, quotient_ptr);
+            ret_ptr->var_used.insert(op->a->var_used.begin(),op->a->var_used.end());
+            ret_ptr->var_used.insert(b_grad->var_used.begin(),b_grad->var_used.end());
+            ret_ptr->var_used.insert(op->b->var_used.begin(),op->b->var_used.end());
+            return std::const_pointer_cast<const Unary>(ret_ptr);
         }
         else if (b_grad->is_zero)
         {
-            return Binary::make(op->type(), op->op_type, a_grad, op->b);
+            std::shared_ptr<Binary> ret_ptr = std::make_shared<Binary>(op->type(), op->op_type, a_grad, op->b);
+            ret_ptr->var_used.insert(a_grad->var_used.begin(),a_grad->var_used.end());
+            ret_ptr->var_used.insert(op->b->var_used.begin(),op->b->var_used.end());
+            return std::const_pointer_cast<const Binary>(ret_ptr);
         }
         else
         {
@@ -168,7 +191,12 @@ Expr IRMutator_grad::visit(Ref<const Binary> op)
             std::shared_ptr<const Binary> divisor_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->b, op->b);
             std::shared_ptr<const Binary> term2_ptr = std::make_shared<const Binary>(op->type(), op->op_type, dividend_ptr, divisor_ptr);
             std::shared_ptr<const Binary> dif_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Sub, term1_ptr, term2_ptr);
-            return Unary::make(op->type(), UnaryOpType::Bracket, dif_ptr);
+            std::shared_ptr<Unary> ret_ptr = std::make_shared<Unary>(op->type(), UnaryOpType::Bracket, dif_ptr);
+            ret_ptr->var_used.insert(op->a->var_used.begin(),op->a->var_used.end());
+            ret_ptr->var_used.insert(b_grad->var_used.begin(),b_grad->var_used.end());
+            ret_ptr->var_used.insert(a_grad->var_used.begin(),a_grad->var_used.end());
+            ret_ptr->var_used.insert(op->b->var_used.begin(),op->b->var_used.end());
+            return std::const_pointer_cast<const Unary>(ret_ptr);
         }
     }
     return Binary::make(op->type(), op->op_type, a_grad, b_grad);
@@ -232,7 +260,9 @@ Expr IRMutator_grad::visit(Ref<const Var> op)
     {
         cond = Binary::make(Type::int_scalar(32), BinaryOpType::And, cond, conds[i]);
     }
-    return Select::make(Type::int_scalar(32), cond, Expr(1), Expr(0));
+    std::shared_ptr<Select> ret_ptr = std::make_shared<Select>(Type::int_scalar(32), cond, Expr(1), Expr(0));
+    ret_ptr->var_used.insert(op->name);
+    return std::const_pointer_cast<const Select>(ret_ptr);
 }
 
 Expr IRMutator_grad::visit(Ref<const Dom> op)
