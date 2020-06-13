@@ -198,6 +198,14 @@ Expr IRMutator_grad::visit(Ref<const Ramp> op)
 
 Expr IRMutator_grad::visit(Ref<const Var> op)
 {
+    if (op->name != global_dest_name[global_dest_index])
+    {
+        std::shared_ptr<IntImm> ret_ptr = std::make_shared<IntImm>(Type::int_scalar(32), 0);
+        ret_ptr->is_zero = true;
+        return std::const_pointer_cast<const IntImm>(ret_ptr);
+    }
+    //TO DO:index match
+    //return Select
     std::vector<Expr> new_args;
     for (auto arg : op->args)
     {
