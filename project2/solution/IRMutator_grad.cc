@@ -29,19 +29,26 @@ extern std::map<std::string, std::vector<size_t>> global_shape_map;
 
 //dest_name 存储了需要求导对象的名字，比如对A矩阵求导就会存储["A"]
 std::vector<std::string> global_dest_name;
-//dest_index 指示当次访问需要对dest_name这个列表中的哪一个名字求导
-//例如dest_name=["A","B"]，那么dest_index=0表示本次对A求导
+
+/*
+ * dest_index 指示当次访问需要对dest_name这个列表中的哪一个名字求导
+ * 例如dest_name=["A","B"]，那么dest_index=0表示本次对A求导
+ * */
 size_t global_dest_index;
 
-//样例中生成函数签名的时候，出现了非常tricky的情况
-//大概的意思就是，使用了哪几个矩阵，就在签名中出现哪几个矩阵，没有用到的不出现
-//例如C=A*B(case1),对A求导，结果是C'=A'*B+A*B'，但是B'=0，所以可以被优化成C'=A'*B
-//这样就只用到了B矩阵，所以函数签名里是没有A矩阵的。
-//如果不做上面这个优化，函数体中就会出现同时使用A和B矩阵的现象，导致出错
-//所以生成导数计算式时要注意优化零项
-//同时global_used用来存储所有用到过的矩阵的名字，用到过的名字就插入这个set
-//这样在生成签名时会方便一些
+/* 样例中生成函数签名的时候，出现了非常tricky的情况
+ * 大概的意思就是，使用了哪几个矩阵，就在签名中出现哪几个矩阵，没有用到的不出现
+ * 例如C=A*B(case1),对A求导，结果是C'=A'*B+A*B'，但是B'=0，所以可以被优化成C'=A'*B
+ * 这样就只用到了B矩阵，所以函数签名里是没有A矩阵的。
+ * 如果不做上面这个优化，函数体中就会出现同时使用A和B矩阵的现象，导致出错
+ * 所以生成导数计算式时要注意优化零项
+ * 同时global_used用来存储所有用到过的矩阵的名字，用到过的名字就插入这个set
+ * 这样在生成签名时会方便一些 
+ * */
 std::set<std::string> global_used;
+
+//求导目标矩阵下标
+std::vector<std::string> global_grad_index;
 
 using namespace Boost::Internal;
 
@@ -152,7 +159,7 @@ Expr IRMutator_grad::visit(Ref<const Binary> op)
             std::shared_ptr<const Binary> dividend_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->a, b_grad);
             std::shared_ptr<const Binary> divisor_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->b, op->b);
             std::shared_ptr<const Binary> term2_ptr = std::make_shared<const Binary>(op->type(), op->op_type, dividend_ptr, divisor_ptr);
-            std::shared_ptr<const Binary> dif_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Add, term1_ptr, term2_ptr);
+            std::shared_ptr<const Binary> dif_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Sub, term1_ptr, term2_ptr);
             return Unary::make(op->type(), UnaryOpType::Bracket, dif_ptr);
         }
     }
@@ -206,12 +213,18 @@ Expr IRMutator_grad::visit(Ref<const Var> op)
     }
     //TO DO:index match
     //return Select
-    std::vector<Expr> new_args;
-    for (auto arg : op->args)
+
+    std::vector<Expr> conds;
+    for (std::vector<Expr>::size_type i = 0; i < global_grad_index.size(); i++)
     {
-        new_args.push_back(mutate(arg));
+        conds.push_back(Compare::make(Type::int_scalar(32), CompareOpType::EQ, StringImm::make(Type::int_scalar(32), global_grad_index[i]), op->args[i]));
     }
-    return Var::make(op->type(), op->name, new_args, op->shape);
+    Expr cond = conds[0];
+    for (std::vector<Expr>::size_type i = 1; i < conds.size(); i++)
+    {
+        cond = Binary::make(Type::int_scalar(32), BinaryOpType::And, cond, conds[i]);
+    }
+    return Select::make(Type::int_scalar(32), cond, Expr(1), Expr(0));
 }
 
 Expr IRMutator_grad::visit(Ref<const Dom> op)
@@ -285,12 +298,14 @@ Group IRMutator_grad::visit(Ref<const Kernel> op)
                     src_var_ptr->args.pop_back();
                 }
                 std::vector<size_t> grad_shape = global_shape_map[global_dest_name[global_dest_index]];
+                global_grad_index.clear();
                 for (auto s : grad_shape)
                 {
                     dst_var_ptr->shape.push_back(s);
                     src_var_ptr->shape.push_back(s);
                     dst_var_ptr->args.push_back(int(s));
                     src_var_ptr->args.push_back(StringImm::make(Type::int_scalar(32), "index" + std::to_string(index_count)));
+                    global_grad_index.push_back("index" + std::to_string(index_count));
                     index_count += 1;
                 }
             }
