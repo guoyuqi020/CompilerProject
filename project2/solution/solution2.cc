@@ -105,7 +105,7 @@ void handler(std::string inpath, std::string outpath)
     Boost::Internal::IRPrinter_genCcode printer;
     Boost::Internal::IRMutator_grad mutator;
     Boost::Internal::Group res = mutator.mutate(Boost::Internal::Group(myroot_kernel));
-    ofile << printer.print(Boost::Internal::Group(myroot_kernel));
+    ofile << printer.print(Boost::Internal::Group(res));
 
     ofile.close();
     std::cout << inpath << " done, saved at " << outpath << "\n";

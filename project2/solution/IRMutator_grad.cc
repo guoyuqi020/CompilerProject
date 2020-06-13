@@ -69,22 +69,30 @@ Group IRMutator_grad::mutate(const Group &group)
 
 Expr IRMutator_grad::visit(Ref<const IntImm> op)
 {
-    return op;
+    std::shared_ptr<IntImm> ret_ptr = std::make_shared<IntImm>(Type::int_scalar(32), 0);
+    ret_ptr->is_zero = true;
+    return std::const_pointer_cast<const IntImm>(ret_ptr);
 }
 
 Expr IRMutator_grad::visit(Ref<const UIntImm> op)
 {
-    return op;
+    std::shared_ptr<IntImm> ret_ptr = std::make_shared<IntImm>(Type::int_scalar(32), 0);
+    ret_ptr->is_zero = true;
+    return std::const_pointer_cast<const IntImm>(ret_ptr);
 }
 
 Expr IRMutator_grad::visit(Ref<const FloatImm> op)
 {
-    return op;
+    std::shared_ptr<IntImm> ret_ptr = std::make_shared<IntImm>(Type::int_scalar(32), 0);
+    ret_ptr->is_zero = true;
+    return std::const_pointer_cast<const IntImm>(ret_ptr);
 }
 
 Expr IRMutator_grad::visit(Ref<const StringImm> op)
 {
-    return op;
+    std::shared_ptr<IntImm> ret_ptr = std::make_shared<IntImm>(Type::int_scalar(32), 0);
+    ret_ptr->is_zero = true;
+    return std::const_pointer_cast<const IntImm>(ret_ptr);
 }
 
 Expr IRMutator_grad::visit(Ref<const Unary> op)
@@ -242,32 +250,26 @@ Expr IRMutator_grad::visit(Ref<const Index> op)
 
 Stmt IRMutator_grad::visit(Ref<const LoopNest> op)
 {
-    std::vector<Expr> new_index_list;
     std::vector<Stmt> new_body_list;
-    for (auto index : op->index_list)
-    {
-        new_index_list.push_back(mutate(index));
-    }
     for (auto body : op->body_list)
     {
         new_body_list.push_back(mutate(body));
     }
-    return LoopNest::make(new_index_list, new_body_list);
+    return LoopNest::make(op->index_list, new_body_list);
 }
 
 Stmt IRMutator_grad::visit(Ref<const IfThenElse> op)
 {
-    Expr new_cond = mutate(op->cond);
     Stmt new_true_case = mutate(op->true_case);
-    Stmt new_false_case = mutate(op->false_case);
-    return IfThenElse::make(new_cond, new_true_case, new_false_case);
+    return IfThenElse::make(op->cond, new_true_case, op->false_case);
 }
 
 Stmt IRMutator_grad::visit(Ref<const Move> op)
 {
-    Expr new_dst = mutate(op->dst);
     Expr new_src = mutate(op->src);
-    return Move::make(new_dst, new_src, op->move_type);
+    std::shared_ptr<Move> ret_ptr = std::make_shared<Move>(op->dst, new_src, op->move_type);
+    ret_ptr->move_op = op->move_op;
+    return std::const_pointer_cast<const Move>(ret_ptr);
 }
 
 Group IRMutator_grad::visit(Ref<const Kernel> op)
@@ -308,8 +310,12 @@ Group IRMutator_grad::visit(Ref<const Kernel> op)
                     global_grad_index.push_back("index" + std::to_string(index_count));
                     index_count += 1;
                 }
+                new_stmt_list.push_back(stmt);
             }
-            new_stmt_list.push_back(stmt);
+            else
+            {
+                new_stmt_list.push_back(mutate(stmt));
+            }
         }
     }
     std::vector<Expr> new_inputs;
@@ -329,5 +335,6 @@ Group IRMutator_grad::visit(Ref<const Kernel> op)
     }
     std::shared_ptr<Kernel> output_ptr = std::const_pointer_cast<Kernel>(std::make_shared<const Kernel>(op->name, new_inputs, new_outputs, new_stmt_list, op->kernel_type));
     output_ptr->grads = new_grads;
+    output_ptr->printer_data_type = op->printer_data_type;
     return std::const_pointer_cast<const Kernel>(output_ptr);
 }
