@@ -187,6 +187,7 @@ namespace Boost
 
         public:
             std::set<std::string> variables;
+            std::set<std::string> var_used;
             bool is_zero = false;
 
             virtual void set_boundary(std::map<std::string, std::pair<int, int>> &global_map, std::pair<int, int> bound) const
