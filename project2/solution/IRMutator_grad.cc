@@ -82,15 +82,81 @@ Expr IRMutator_grad::visit(Ref<const StringImm> op)
 
 Expr IRMutator_grad::visit(Ref<const Unary> op)
 {
-    Expr new_a = mutate(op->a);
-    return Unary::make(op->type(), op->op_type, new_a);
+    Expr a_grad = mutate(op->a);
+    return Unary::make(op->type(), op->op_type, a_grad);
 }
 
 Expr IRMutator_grad::visit(Ref<const Binary> op)
 {
-    Expr new_a = mutate(op->a);
-    Expr new_b = mutate(op->b);
-    return Binary::make(op->type(), op->op_type, new_a, new_b);
+    Expr a_grad = mutate(op->a);
+    Expr b_grad = mutate(op->b);
+    if (op->op_type == BinaryOpType::Add || op->op_type == BinaryOpType::Sub)
+    {
+        if (a_grad->is_zero && b_grad->is_zero)
+        {
+            std::shared_ptr<IntImm> ret_ptr = std::make_shared<IntImm>(Type::int_scalar(32), 0);
+            ret_ptr->is_zero = true;
+            return std::const_pointer_cast<const IntImm>(ret_ptr);
+        }
+        else
+        {
+            return Binary::make(op->type(), op->op_type, a_grad, b_grad);
+        }
+    }
+    else if (op->op_type == BinaryOpType::Mul)
+    {
+        if (a_grad->is_zero && b_grad->is_zero)
+        {
+            std::shared_ptr<IntImm> ret_ptr = std::make_shared<IntImm>(Type::int_scalar(32), 0);
+            ret_ptr->is_zero = true;
+            return std::const_pointer_cast<const IntImm>(ret_ptr);
+        }
+        else if (a_grad->is_zero)
+        {
+            return Binary::make(op->type(), BinaryOpType::Mul, op->a, b_grad);
+        }
+        else if (b_grad->is_zero)
+        {
+            return Binary::make(op->type(), BinaryOpType::Mul, a_grad, op->b);
+        }
+        else
+        {
+            std::shared_ptr<const Binary> term1_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->a, b_grad);
+            std::shared_ptr<const Binary> term2_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, a_grad, op->b);
+            std::shared_ptr<const Binary> sum_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Add, term1_ptr, term2_ptr);
+            return Unary::make(op->type(), UnaryOpType::Bracket, sum_ptr);
+        }
+    }
+    else if (op->op_type == BinaryOpType::Div || op->op_type == BinaryOpType::ExactlyDiv)
+    {
+        if (a_grad->is_zero && b_grad->is_zero)
+        {
+            std::shared_ptr<IntImm> ret_ptr = std::make_shared<IntImm>(Type::int_scalar(32), 0);
+            ret_ptr->is_zero = true;
+            return std::const_pointer_cast<const IntImm>(ret_ptr);
+        }
+        else if (a_grad->is_zero)
+        {
+            std::shared_ptr<const Binary> dividend_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->a, b_grad);
+            std::shared_ptr<const Binary> divisor_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->b, op->b);
+            std::shared_ptr<const Binary> quotient_ptr = std::make_shared<const Binary>(op->type(), op->op_type, dividend_ptr, divisor_ptr);
+            return Unary::make(op->type(), UnaryOpType::Neg, quotient_ptr);
+        }
+        else if (b_grad->is_zero)
+        {
+            return Binary::make(op->type(), op->op_type, a_grad, op->b);
+        }
+        else
+        {
+            std::shared_ptr<const Binary> term1_ptr = std::make_shared<const Binary>(op->type(), op->op_type, a_grad, op->b);
+            std::shared_ptr<const Binary> dividend_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->a, b_grad);
+            std::shared_ptr<const Binary> divisor_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Mul, op->b, op->b);
+            std::shared_ptr<const Binary> term2_ptr = std::make_shared<const Binary>(op->type(), op->op_type, dividend_ptr, divisor_ptr);
+            std::shared_ptr<const Binary> dif_ptr = std::make_shared<const Binary>(op->type(), BinaryOpType::Add, term1_ptr, term2_ptr);
+            return Unary::make(op->type(), UnaryOpType::Bracket, dif_ptr);
+        }
+    }
+    return Binary::make(op->type(), op->op_type, a_grad, b_grad);
 }
 
 Expr IRMutator_grad::visit(Ref<const Compare> op)
@@ -132,6 +198,14 @@ Expr IRMutator_grad::visit(Ref<const Ramp> op)
 
 Expr IRMutator_grad::visit(Ref<const Var> op)
 {
+    if (op->name != global_dest_name[global_dest_index])
+    {
+        std::shared_ptr<IntImm> ret_ptr = std::make_shared<IntImm>(Type::int_scalar(32), 0);
+        ret_ptr->is_zero = true;
+        return std::const_pointer_cast<const IntImm>(ret_ptr);
+    }
+    //TO DO:index match
+    //return Select
     std::vector<Expr> new_args;
     for (auto arg : op->args)
     {
