@@ -180,7 +180,7 @@ void IRPrinter_genCcode::visit(Ref<const Move> op)
     else
     { // Move
         (op->dst).visit_expr(this);
-        if (op->move_op == MoveOp::Equal)
+        if (op->move_op == MoveOp::Equal || op->move_op == MoveOp::Chain_rule)
         {
             oss << " = ";
         }

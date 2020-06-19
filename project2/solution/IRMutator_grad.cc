@@ -24,6 +24,8 @@
 
 #include "../../include/IRMutator_grad.h"
 
+extern std::map<std::string, std::pair<int, int>> global_map;
+
 //<矩阵名字，shape>
 extern std::map<std::string, std::vector<size_t>> global_shape_map;
 
@@ -302,10 +304,38 @@ Stmt IRMutator_grad::visit(Ref<const IfThenElse> op)
 
 Stmt IRMutator_grad::visit(Ref<const Move> op)
 {
-    Expr new_src = mutate(op->src);
-    std::shared_ptr<Move> ret_ptr = std::make_shared<Move>(op->dst, new_src, op->move_type);
-    ret_ptr->move_op = op->move_op;
-    return std::const_pointer_cast<const Move>(ret_ptr);
+    std::shared_ptr<Var> dst_var_ptr = std::const_pointer_cast<Var>(op->dst.as<Var>());
+    std::shared_ptr<Var> src_var_ptr = std::const_pointer_cast<Var>(op->src.as<Var>());
+    
+    if (op->move_op == MoveOp::Chain_rule) {
+        std::shared_ptr<Var> new_dst_var_ptr = std::make_shared<Var>(Type::int_scalar(32), "d"+global_dest_name[global_dest_index],
+         std::vector<Expr>(), std::vector<size_t>());
+        std::vector<size_t> grad_shape = global_shape_map[global_dest_name[global_dest_index]];
+        int index_count = 1;
+        for (auto s : grad_shape)
+        {
+            new_dst_var_ptr->shape.push_back(s);
+            new_dst_var_ptr->args.push_back(StringImm::make(Type::int_scalar(32), "index" + std::to_string(index_count)));
+            index_count += 1;
+        }
+        if (dst_var_ptr->name.substr(0,1).compare("d") != 0)
+            dst_var_ptr->name = "d"+dst_var_ptr->name;
+        Expr RHS_1_ptr = Expr(std::dynamic_pointer_cast<const Var>(dst_var_ptr));
+        Expr RHS_2_ptr = Expr(std::dynamic_pointer_cast<const Var>(src_var_ptr));
+        std::shared_ptr<Binary> RHS_ptr = std::make_shared<Binary>(Type::float_scalar(32), BinaryOpType::Mul, RHS_1_ptr, RHS_2_ptr);
+        Expr lhs_ptr = Expr(std::dynamic_pointer_cast<const Var>(new_dst_var_ptr));
+        Expr rhs_ptr = Expr(std::dynamic_pointer_cast<const Binary>(RHS_ptr));
+        std::shared_ptr<Move> s_ptr = std::make_shared<Move>(lhs_ptr, rhs_ptr, MoveType::MemToMem);
+        s_ptr->move_op = MoveOp::Chain_rule;
+        return std::const_pointer_cast<const Move>(s_ptr);
+    }
+    else
+    {
+        Expr new_src = mutate(op->src);
+        std::shared_ptr<Move> ret_ptr = std::make_shared<Move>(op->dst, new_src, op->move_type);
+        ret_ptr->move_op = op->move_op;
+        return std::const_pointer_cast<const Move>(ret_ptr);
+    }
 }
 
 Group IRMutator_grad::visit(Ref<const Kernel> op)
@@ -316,6 +346,8 @@ Group IRMutator_grad::visit(Ref<const Kernel> op)
     int index_count = 1;
     for (global_dest_index = 0; global_dest_index < global_dest_name.size(); global_dest_index++)
     {
+        std::vector<Expr> new_index_list;
+        std::vector<Stmt> new_body_list;
         for (auto stmt : op->stmt_list)
         {
             if (stmt.node_type() == IRNodeType::Move)
@@ -344,15 +376,19 @@ Group IRMutator_grad::visit(Ref<const Kernel> op)
                     dst_var_ptr->args.push_back(int(s));
                     src_var_ptr->args.push_back(StringImm::make(Type::int_scalar(32), "index" + std::to_string(index_count)));
                     global_grad_index.push_back("index" + std::to_string(index_count));
+                    Expr dom = Dom::make(Type::int_scalar(32), 0, int(s));
+                    new_index_list.push_back(Index::make(Type::int_scalar(32), "index" + std::to_string(index_count), dom, IndexType::Block));
                     index_count += 1;
                 }
-                new_stmt_list.push_back(stmt);
+                new_body_list.push_back(stmt);
             }
             else
             {
-                new_stmt_list.push_back(mutate(stmt));
+                new_body_list.push_back(mutate(stmt));
             }
         }
+        std::shared_ptr<LoopNest> outer_loop = std::make_shared<LoopNest>(new_index_list, new_body_list);
+        new_stmt_list.push_back(Stmt(std::dynamic_pointer_cast<const LoopNest>(outer_loop)));
     }
     std::vector<Expr> new_inputs;
     for (auto expr : op->inputs)

@@ -1,6 +1,8 @@
 #include "../../include/IRTermFinder.h"
 
 extern std::map<std::string, std::pair<int, int>> global_map;
+extern std::map<std::string, std::vector<size_t>> global_shape_map;
+extern std::vector<std::string> global_dest_name;
 using namespace Boost::Internal;
 
 void IRTermFinder::visit(Ref<const Move> op)
@@ -140,7 +142,7 @@ void IRTermFinder::getMoveStmt()
 
     post_move_stmt = std::make_shared<Move>(Expr(std::dynamic_pointer_cast<const Var>(_lhs)),
                                             Expr(std::dynamic_pointer_cast<const Var>(_lhs_temp)), MoveType::MemToMem);
-    post_move_stmt->move_op = MoveOp::Equal;
+    post_move_stmt->move_op = MoveOp::Chain_rule;
 }
 
 void IRTermFinder::getOuterLoop()

@@ -963,7 +963,8 @@ namespace Boost
             Plus,
             Minus,
             Zero,
-            Declare
+            Declare,
+            Chain_rule
         };
 
         /**
