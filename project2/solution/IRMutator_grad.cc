@@ -326,7 +326,7 @@ Stmt IRMutator_grad::visit(Ref<const Move> op)
         Expr lhs_ptr = Expr(std::dynamic_pointer_cast<const Var>(new_dst_var_ptr));
         Expr rhs_ptr = Expr(std::dynamic_pointer_cast<const Binary>(RHS_ptr));
         std::shared_ptr<Move> s_ptr = std::make_shared<Move>(lhs_ptr, rhs_ptr, MoveType::MemToMem);
-        s_ptr->move_op = MoveOp::Chain_rule;
+        s_ptr->move_op = MoveOp::Plus;
         return std::const_pointer_cast<const Move>(s_ptr);
     }
     else
@@ -371,10 +371,12 @@ Group IRMutator_grad::visit(Ref<const Kernel> op)
                 global_grad_index.clear();
                 for (auto s : grad_shape)
                 {
+                    /*
                     dst_var_ptr->shape.push_back(s);
                     src_var_ptr->shape.push_back(s);
                     dst_var_ptr->args.push_back(int(s));
                     src_var_ptr->args.push_back(StringImm::make(Type::int_scalar(32), "index" + std::to_string(index_count)));
+                    */
                     global_grad_index.push_back("index" + std::to_string(index_count));
                     Expr dom = Dom::make(Type::int_scalar(32), 0, int(s));
                     new_index_list.push_back(Index::make(Type::int_scalar(32), "index" + std::to_string(index_count), dom, IndexType::Block));
