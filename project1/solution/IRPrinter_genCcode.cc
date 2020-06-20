@@ -235,3 +235,13 @@ void IRPrinter_genCcode::visit(Ref<const Index> op)
     oss << op->name + " < " << for_end << ";";
     oss << "++" + op->name + ")";
 }
+void IRPrinter_genCcode::visit(Ref<const Select> op)
+{
+    oss << "(( ";
+    (op->cond).visit_expr(this);
+    oss << " ) ? ( ";
+    (op->true_value).visit_expr(this);
+    oss << " ) : ( ";
+    (op->false_value).visit_expr(this);
+    oss << " ))";
+}
