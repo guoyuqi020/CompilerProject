@@ -26,6 +26,7 @@ namespace Boost
             void visit(Ref<const LoopNest> op) override;
             void visit(Ref<const Dom>) override;
             void visit(Ref<const Index>) override;
+            void visit(Ref<const Select> op) override;
             std::string print(const Group &);
 
         private:

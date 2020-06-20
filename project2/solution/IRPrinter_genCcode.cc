@@ -3,6 +3,8 @@
 #include "../../include/IRPrinter_genCcode.h"
 using namespace Boost::Internal;
 
+extern std::set<std::string> global_used;
+
 void IRPrinter_genCcode::visit(Ref<const Kernel> op)
 {
     print_indent();
@@ -13,6 +15,12 @@ void IRPrinter_genCcode::visit(Ref<const Kernel> op)
     data_type = op->printer_data_type;
     for (size_t i = 0; i < op->inputs.size(); ++i)
     {
+        std::string varname = ((op->inputs[i]).as<Var>())->name;
+        varname = varname.substr(2, varname.length() - 3);
+        if (global_used.find(varname) == global_used.end())
+        {
+            continue;
+        }
         oss << data_type << " ";
         op->inputs[i].visit_expr(this);
         if (i < op->inputs.size() - 1)
@@ -59,7 +67,7 @@ void IRPrinter_genCcode::visit(Ref<const UIntImm> op)
 
 void IRPrinter_genCcode::visit(Ref<const FloatImm> op)
 {
-    oss << op->value();
+    oss << op->value() << ".0";
 }
 
 void IRPrinter_genCcode::visit(Ref<const StringImm> op)
@@ -243,4 +251,14 @@ void IRPrinter_genCcode::visit(Ref<const Index> op)
     oss << "(int " + op->name + " = " << for_begin << ";";
     oss << op->name + " < " << for_end << ";";
     oss << "++" + op->name + ")";
+}
+void IRPrinter_genCcode::visit(Ref<const Select> op)
+{
+    oss << "(( ";
+    (op->cond).visit_expr(this);
+    oss << " ) ? ( ";
+    (op->true_value).visit_expr(this);
+    oss << " ) : ( ";
+    (op->false_value).visit_expr(this);
+    oss << " ))";
 }

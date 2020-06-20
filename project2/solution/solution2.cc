@@ -126,7 +126,7 @@ int main()
     do
     {
         std::string filename(fileinfo.name);
-        std::string OutPath = OutDir + "kernel_" + filename.substr(0, filename.length() - 5) + ".cc";
+        std::string OutPath = OutDir + "grad_" + filename.substr(0, filename.length() - 5) + ".cc";
 
         handler("./cases/" + filename, OutPath);
 
@@ -142,7 +142,7 @@ int main()
             std::string file_name(dirp->d_name);
             if (file_name.substr(file_name.length() - 5) == std::string(".json"))
             {
-                std::string OutPath = OutDir + "kernel_" + file_name.substr(0, file_name.length() - 5) + ".cc";
+                std::string OutPath = OutDir + "grad_" + file_name.substr(0, file_name.length() - 5) + ".cc";
                 handler("./cases/" + file_name, OutPath);
             }
         }
