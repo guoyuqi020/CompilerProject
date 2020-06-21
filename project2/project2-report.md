@@ -213,6 +213,9 @@ void grad_example(float (&C)[32][16], float (&dA)[32][16], float (&dB)[32][16]) 
 
 郭宇琪负责Kernel结点的转换，顾怿洋负责Move结点的转换，周博文和袁皓晨负责表达式部分的求导转换。
 
+## **实验结果**
+![result](./res.png)
+
 
 
 
