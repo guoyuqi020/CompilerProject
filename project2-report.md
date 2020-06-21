@@ -10,7 +10,6 @@
 
 袁皓晨 1700012959
 
-## **组内分工**
 
 ## **求导原理描述**
 
@@ -178,7 +177,7 @@ void grad_example(float (&C)[32][16], float (&dA)[32][16], float (&dB)[32][16]) 
 
 ## **实现流程**
 
-  由于我们的project2内容很大一部分是基于project1，所以实现流程中很多与project1相同。
+  由于我们的project2内容很大一部分是基于project1，所以实现流程中很多与project1相同。主要的工作在设计思路中的第三部分。
   
 ### **设计思路：**
 
@@ -210,7 +209,9 @@ void grad_example(float (&C)[32][16], float (&dA)[32][16], float (&dB)[32][16]) 
 
 这一部分主要通过继承自IRPrinter的类IRPrinter_genCcode实现，主要操作是重载IRPrinter中对一些结点的visit函数。由于变量声明只出现在参数表中和临时变量声明时，所以对于四种类型的立即数直接输出它们的值，在Kernel部分增加了参数类型的输出；Unary部分增加了括号项，Binary部分增加了整除；Var结点分别根据是张量还是常量进行不同的输出；对于IfThenElse结点，由于我们得到的c语法树结构中不会出现else部分，所以将其去掉；对于LoopNest结点，我们调整了index结点和Dom结点的输出方式；对于Move结点，根据我们自己定义的属性Move操作类型MoveOp进行不同的输出，如果操作是Declare（声明），输出变量类型和名称，如果操作是Zero（初始化，置0），根据之前的处理，只需直接进行赋值，其他几种情况（=、+=、-=）分别输出对应的操作符；对于Select结点，将其翻译为问号表达式。这一部分的主要类型声明在include/IRPrinter_genCcode.h文件中，实现在solution/IRPrinter_genCcode.cc文件中。
 
+## **组内分工**
 
+郭宇琪负责Kernel结点的转换，顾怿洋负责Move结点的转换，周博文和袁皓晨负责表达式部分的求导转换。
 
 
 
